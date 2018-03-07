@@ -26,6 +26,9 @@ ENTRYPOINT ["/tini", "--"]
 # copy openedge files in
 COPY --from=db_install /usr/dlc/ /usr/dlc/
 
+# the directory for the database data
+RUN mkdir -p /var/lib/openedge/data/
+
 # add startup script
 WORKDIR /usr/wrk
 
@@ -48,11 +51,11 @@ ENV \
  OPENEDGE_BUFFERS="2000" \
  OPENEDGE_BROKER_PORT="20666"
 
-# the directory and volume for the database data
-RUN mkdir -p /var/lib/openedge/data/
+# volume for database data
 VOLUME /var/lib/openedge/data/
 
 EXPOSE $OPENEDGE_BROKER_PORT $OPENEDGE_MINPORT-$OPENEDGE_MAXPORT
 
 # Run start.sh under Tini
 CMD ["/usr/wrk/start.sh"]
+
