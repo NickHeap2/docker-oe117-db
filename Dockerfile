@@ -1,25 +1,8 @@
-# install files extract
-FROM busybox:latest AS install_files
+# db install using setup image
+FROM oe117-setup:latest AS db_install
 
-RUN mkdir -p /install/oe117/
-
-# the install file has to be in the same directory as this Dockerfile
-COPY PROGRESS_OE_11.7_LNX_64_EVAL.tar.gz /install/oe117/
-
-# pull the install file from local file server like HFS
-#RUN wget http://192.168.0.10/workspaces/docker-oe117-db/PROGRESS_OE_11.7_LNX_64_EVAL.tar.gz -P /install/oe117/
-RUN tar -xf /install/oe117/PROGRESS_OE_11.7_LNX_64_EVAL.tar.gz --directory /install/oe117/
-RUN rm /install/oe117/PROGRESS_OE_11.7_LNX_64_EVAL.tar.gz
-
-###############################################
-
-# db install using install files
-FROM centos:7.3.1611 AS db_install
-
-# get the install files
-COPY --from=install_files /install/oe117/ /install/oe117/
 # copy our response.ini in from our test install
-COPY response.ini /install/oe117/
+COPY conf/response.ini /install/oe117/
 
 #do a background progress install with our response.ini
 RUN /install/oe117/proinst -b /install/oe117/response.ini -l silentinstall.log
@@ -34,18 +17,19 @@ LABEL maintainer="Nick Heap (nickheap@gmail.com)" \
  description="Database Server Image for OpenEdge 11.7.1" \
  oeversion="11.7.1"
 
-# copy openedge files in
-COPY --from=db_install /usr/dlc/ /usr/dlc/
-
 # Add Tini
 ENV TINI_VERSION v0.17.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini
 ENTRYPOINT ["/tini", "--"]
 
+# copy openedge files in
+COPY --from=db_install /usr/dlc/ /usr/dlc/
+
 # add startup script
 WORKDIR /usr/wrk
-COPY start.sh .
+
+COPY scripts/start.sh .
 
 # set required vars
 ENV \
