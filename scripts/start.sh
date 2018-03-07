@@ -18,6 +18,8 @@ trap 'kill ${!}; signal_handler' SIGTERM SIGINT
 
 # set vars
 openedge_db="/var/lib/openedge/data/$OPENEDGE_DB"
+procure_error_log="/var/lib/openedge/data/init/errors/procure.e"
+
 minport="$OPENEDGE_MINPORT"
 maxport="$OPENEDGE_MAXPORT"
 num_users="$OPENEDGE_NUM_USERS"
@@ -32,33 +34,44 @@ db_from="$OPENEDGE_BASE"
 if [ ! -z ${rebuild_database} ]
 then
   echo "$(date +%F_%T) Deleting existing database '${openedge_db}'"
-  rm -f ${openedge_db}.*
+  rm -f ${openedge_db}*.*
 fi
 
 # do we need to create a db?
 if [ ! -f ${openedge_db}.db ]
 then
+  # make sure errors directory exists
+  mkdir -p /var/lib/openedge/data/init/errors/
+  # clean it before run
+  rm -f /var/lib/openedge/data/init/errors/*.e
+
   # create a new db from empty8
-  echo "$(date +%F_%T) Creating empty database '${openedge_db}' from /usr/dlc/${db_from}..."
+  echo "$(date +%F_%T) Creating empty database '${openedge_db}' from /usr/dlc/${db_from}..." | tee ${procure_error_log}
   prodb ${openedge_db} /usr/dlc/${db_from}
   touch ${openedge_db}.lg
 
   # load any df's in the init folder
   for df in /var/lib/openedge/data/init/*.df; do
-    echo "$(date +%F_%T) Loading df '$df'..."
-    pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SCHEMA,$df,NEW OBJECTS"
+    echo "$(date +%F_%T) Loading df '${df}'..." | tee -a ${procure_error_log}
+    pro -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SCHEMA,$df,NEW OBJECTS" >> ${procure_error_log}
   done
 
   # load sequence values from init/_seqvald.d
   if [ -f /var/lib/openedge/data/init/_seqvals.d ]
   then
-    echo "$(date +%F_%T) Loading sequence current values from /var/lib/openedge/data/init/_seqvals.d..."
-    pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SEQUENCE_VALUES,_seqvals.d,/var/lib/openedge/data/init/"
+    echo "$(date +%F_%T) Loading sequence current values from /var/lib/openedge/data/init/_seqvals.d..." | tee -a ${procure_error_log}
+    pro -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SEQUENCE_VALUES,_seqvals.d,/var/lib/openedge/data/init/" >> ${procure_error_log}
   fi
 
   # load any data in the init folder
-  echo "$(date +%F_%T) Loading data from /var/lib/openedge/data/init/*.d..."
-  pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init/"
+  echo "$(date +%F_%T) Loading data from /var/lib/openedge/data/init/*.d..." | tee -a ${procure_error_log}
+  pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init/" >> ${procure_error_log}
+
+  # move any error files into the errors directory
+  for error in /var/lib/openedge/data/init/*.e; do
+    echo "!Errors during loading in file '${error}'!"
+    mv -f ${error} /var/lib/openedge/data/init/errors/
+  done
 
   echo "$(date +%F_%T) All loads completed."
 else
