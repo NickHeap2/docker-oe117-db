@@ -2,8 +2,11 @@
 
 set -e
 
+# set option so that no matches doesn't match itself
+shopt -s nullglob
+
 signal_handler() {
-    echo "Shutting down database..." 
+    echo "$(date +%F_%T) Shutting down database..." 
     # call proshut
     proshut -by ${openedge_db}
 
@@ -22,43 +25,75 @@ date_format="$OPENEDGE_DATE_FORMAT"
 locks="$OPENEDGE_LOCKS"
 buffers="$OPENEDGE_BUFFERS"
 broker_port="$OPENEDGE_BROKER_PORT"
+rebuild_database="$OPENEDGE_REBUILD"
+db_from="$OPENEDGE_BASE"
+
+# rebuild database?
+if [ ! -z ${rebuild_database} ]
+then
+  echo "$(date +%F_%T) Deleting existing database '${openedge_db}'"
+  rm -f ${openedge_db}.*
+fi
 
 # do we need to create a db?
 if [ ! -f ${openedge_db}.db ]
 then
   # create a new db from empty8
-  prodb ${openedge_db} /usr/dlc/empty8
+  echo "$(date +%F_%T) Creating empty database '${openedge_db}' from /usr/dlc/${db_from}..."
+  prodb ${openedge_db} /usr/dlc/${db_from}
   touch ${openedge_db}.lg
-fi
 
-# do we need to clean up from a crash? (should do extra checks here) 
-if [ -f ${openedge_db}.lk ]
-then
-  rm ${openedge_db}.lk
-fi
+  # load any df's in the init folder
+  for df in /var/lib/openedge/data/init/*.df; do
+    echo "$(date +%F_%T) Loading df '$df'..."
+    pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SCHEMA,$df,NEW OBJECTS"
+  done
 
-# truncate the logfile
-echo "Truncating log file at $(date +%F_%T)"
-prolog ${openedge_db} -silent
+  # load sequence values from init/_seqvald.d
+  if [ -f /var/lib/openedge/data/init/_seqvals.d ]
+  then
+    echo "$(date +%F_%T) Loading sequence current values from /var/lib/openedge/data/init/_seqvals.d..."
+    pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SEQUENCE_VALUES,_seqvals.d,/var/lib/openedge/data/init/"
+  fi
+
+  # load any data in the init folder
+  echo "$(date +%F_%T) Loading data from /var/lib/openedge/data/init/*.d..."
+  pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init/"
+
+  echo "$(date +%F_%T) All loads completed."
+else
+  echo "$(date +%F_%T) Using existing database '${openedge_db}'."
+
+  # do we need to clean up from a crash? (should do extra checks here) 
+  if [ -f ${openedge_db}.lk ]
+  then
+    echo "$(date +%F_%T) Removing lock file from possible crash..."
+    rm ${openedge_db}.lk
+  fi
+
+  # truncate the logfile
+  echo "$(date +%F_%T) Truncating log file"
+  prolog ${openedge_db} -silent
+fi
 
 # set the server args
 server_args="$openedge_db -N TCP -S $broker_port -minport $minport -maxport $maxport -n $num_users -d $date_format -L $locks -B $buffers"
-echo "Starting database server at $(date +%F_%T)"
-echo "using args=${server_args}"
+echo "$(date +%F_%T) Starting database server"
+echo "$(date +%F_%T) using args=${server_args}"
 
 # start the database server
 proserve ${server_args} &
 status=${?}
 if [ ${status} -ne 0 ]
 then
-  echo "Failed to start database server: ${status}"
+  echo "$(date +%F_%T) Failed to start database server: ${status}"
   exit ${status}
 fi
 
 # wait for db to be serving 
 while true
 do
-  echo "Checking db status..."
+  echo "$(date +%F_%T) Checking db status..."
   proutil ${openedge_db} -C holder || dbstatus=$? && true
   if [ ${dbstatus} -eq 16 ]
   then
@@ -68,10 +103,12 @@ do
 done
 # get db server pid 
 pid=`ps aux|grep '[_]mpro'|awk '{print $2}'`
-echo "Server running as pid: ${pid}"
+echo "$(date +%F_%T) Server running as pid: ${pid}"
 
 # keep tailing log file until db server process exits
 tail --pid=${pid} -f "$openedge_db".lg & wait ${!}
+
+echo "$(date +%F_%T) Exiting with error!"
 
 # things didn't go well
 exit 1

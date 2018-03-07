@@ -1,0 +1,1 @@
+COMPILE base/procure.p SAVE.

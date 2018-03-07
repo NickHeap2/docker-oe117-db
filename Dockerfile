@@ -27,7 +27,8 @@ ENTRYPOINT ["/tini", "--"]
 COPY --from=db_install /usr/dlc/ /usr/dlc/
 
 # the directory for the database data
-RUN mkdir -p /var/lib/openedge/data/
+RUN mkdir -p /var/lib/openedge/data/ && mkdir -p /var/lib/openedge/base/
+COPY base/procure.r /var/lib/openedge/base/
 
 # add startup script
 WORKDIR /usr/wrk
@@ -39,6 +40,7 @@ ENV \
  TERM="xterm" \
  JAVA_HOME="/usr/dlc/jdk/bin" \
  PATH="$PATH:/usr/dlc/bin:/usr/dlc/jdk/bin" \
+ PROPATH="/var/lib/openedge/base" \
  DLC="/usr/dlc" \
  WRKDIR="/usr/wrk" \
  PROCFG="" \
@@ -49,7 +51,9 @@ ENV \
  OPENEDGE_DATE_FORMAT="dmy" \
  OPENEDGE_LOCKS="10000" \
  OPENEDGE_BUFFERS="2000" \
- OPENEDGE_BROKER_PORT="20666"
+ OPENEDGE_BROKER_PORT="20666" \
+ OPENEDGE_REBUILD= \
+ OPENEDGE_BASE=empty8
 
 # volume for database data
 VOLUME /var/lib/openedge/data/

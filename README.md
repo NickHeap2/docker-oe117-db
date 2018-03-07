@@ -20,6 +20,12 @@ docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 oe
 docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v S:/workspaces/docker-volumes/sports2000:/var/lib/openedge/data oe117-db:latest
 ```
 
+### Run the container with a mapped volume and rebuild database from sports2000
+
+```bash
+docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v S:/workspaces/docker-volumes/sports2000:/var/lib/openedge/data -e OPENEDGE_REBUILD=true -e OPENEDGE_BASE=sports2000 oe117-db:latest
+```
+
 ### Run bash in the container
 
 ```bash
