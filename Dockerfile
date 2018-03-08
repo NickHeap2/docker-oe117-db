@@ -27,7 +27,7 @@ ENTRYPOINT ["/tini", "--"]
 COPY --from=db_install /usr/dlc/ /usr/dlc/
 
 # the directory for the database data
-RUN mkdir -p /var/lib/openedge/data/ && mkdir -p /var/lib/openedge/base/
+RUN mkdir -p /var/lib/openedge/data/ && mkdir -p /var/lib/openedge/base/ && mkdir -p /var/lib/openedge/code/
 COPY base/procure.r /var/lib/openedge/base/
 
 # add startup script
@@ -40,7 +40,7 @@ ENV \
  TERM="xterm" \
  JAVA_HOME="/usr/dlc/jdk/bin" \
  PATH="$PATH:/usr/dlc/bin:/usr/dlc/jdk/bin" \
- PROPATH="/var/lib/openedge/base" \
+ PROPATH="/var/lib/openedge/base:/var/lib/openedge/code" \
  DLC="/usr/dlc" \
  WRKDIR="/usr/wrk" \
  PROCFG="" \
@@ -57,6 +57,8 @@ ENV \
 
 # volume for database data
 VOLUME /var/lib/openedge/data/
+# volume for code such as triggers
+VOLUME /var/lib/openedge/code/
 
 EXPOSE $OPENEDGE_BROKER_PORT $OPENEDGE_MINPORT-$OPENEDGE_MAXPORT
 

@@ -60,12 +60,12 @@ then
   if [ -f /var/lib/openedge/data/init/_seqvals.d ]
   then
     echo "$(date +%F_%T) Loading sequence current values from /var/lib/openedge/data/init/_seqvals.d..." | tee -a ${procure_error_log}
-    pro -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SEQUENCE_VALUES,_seqvals.d,/var/lib/openedge/data/init/" >> ${procure_error_log}
+    pro -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SEQUENCE_VALUES,_seqvals.d,/var/lib/openedge/data/init" >> ${procure_error_log}
   fi
 
   # load any data in the init folder
   echo "$(date +%F_%T) Loading data from /var/lib/openedge/data/init/*.d..." | tee -a ${procure_error_log}
-  pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init/" >> ${procure_error_log}
+  pro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init" >> ${procure_error_log}
 
   # move any error files into the errors directory
   for error in /var/lib/openedge/data/init/*.e; do
