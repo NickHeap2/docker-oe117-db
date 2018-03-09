@@ -14,6 +14,30 @@ IF cParameters <> "" THEN DO:
     RUN prodict/load_df.r
       (INPUT cSchemaFile).
   END.
+  ELSE IF cAction = "ADD_USER" THEN DO:
+    DEFINE VARIABLE cUserId AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cUsername AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cPassword AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE h_userBuffer AS HANDLE NO-UNDO.
+
+    cUserId = ENTRY(2,cParameters).
+    cUsername = ENTRY(3,cParameters).
+    cPassword = ENTRY(4,cParameters).
+
+    CREATE BUFFER h_userBuffer FOR TABLE SUBSTITUTE("&1.&2", LDBNAME(1), "_user") NO-ERROR.
+    _TRANSACTION:
+    DO TRANSACTION:
+      h_userBuffer:BUFFER-CREATE().
+
+      h_userBuffer:BUFFER-FIELD("_Userid"):BUFFER-VALUE() = cUserId.
+      h_userBuffer:BUFFER-FIELD("_User-Name"):BUFFER-VALUE() = cUsername.
+      h_userBuffer:BUFFER-FIELD("_Password"):BUFFER-VALUE() = ENCODE(cPassword).
+
+      h_userBuffer:BUFFER-RELEASE().
+    END.
+
+
+  END.
   ELSE IF cAction = "LOAD_SEQUENCE_VALUES" THEN DO:
     DEFINE VARIABLE cFileName  AS CHARACTER NO-UNDO.
     DEFINE VARIABLE cDirectory AS CHARACTER NO-UNDO.

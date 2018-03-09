@@ -50,6 +50,9 @@ then
   prodb ${openedge_db} /usr/dlc/${db_from}
   touch ${openedge_db}.lg
 
+  # add a SYSPROGRESS user
+  pro -b -1 -db ${openedge_db} -p procure.p -param "ADD_USER,SYSPROGRESS,SYSPROGRESS,SYSPROGRESS" >> ${procure_error_log}
+
   # load any df's in the init folder
   for df in /var/lib/openedge/data/init/*.df; do
     echo "$(date +%F_%T) Loading df '${df}'..." | tee -a ${procure_error_log}
