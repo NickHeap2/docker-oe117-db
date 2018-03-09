@@ -2,10 +2,10 @@
 FROM oe117-setup:latest AS db_install
 
 # copy our response.ini in from our test install
-COPY conf/response.ini /install/oe117/
+COPY conf/response.ini /install/openedge/
 
 #do a background progress install with our response.ini
-RUN /install/oe117/proinst -b /install/oe117/response.ini -l silentinstall.log
+RUN /install/openedge/proinst -b /install/openedge/response.ini -l silentinstall.log
 
 ###############################################
 
