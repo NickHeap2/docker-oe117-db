@@ -23,8 +23,7 @@ docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v
 ### Run the container with a mapped volume for data and one for code like triggers
 
 ```bash
-docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v S:/workspaces/docker-volumes/sports2000:/var/lib/openedge/data -v S:/workspaces/docker-volumes/sports2000/code:/var/lib/openedge/code 
-oe117-db:latest
+docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v S:/workspaces/docker-volumes/sports2000:/var/lib/openedge/data -v S:/workspaces/docker-volumes/sports2000/code:/var/lib/openedge/code oe117-db:latest
 ```
 
 ### Run the container with a mapped volume and rebuild database from sports2000
