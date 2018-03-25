@@ -53,7 +53,7 @@ ENV \
  OPENEDGE_BUFFERS="2000" \
  OPENEDGE_BROKER_PORT="20666" \
  OPENEDGE_REBUILD= \
- OPENEDGE_BASE=empty8
+ OPENEDGE_BASE=empty4
 
 # volume for database data
 VOLUME /var/lib/openedge/data/
