@@ -19,7 +19,7 @@ trap 'kill ${!}; signal_handler' SIGTERM SIGINT
 # set vars
 dbname="$OPENEDGE_DB"
 openedge_db="/var/lib/openedge/data/$OPENEDGE_DB"
-procure_error_log="/var/lib/openedge/data/init/errors/procure.e"
+procure_error_log="/var/lib/openedge/data/init/${dbname}/errors/procure.e"
 
 minport="$OPENEDGE_MINPORT"
 maxport="$OPENEDGE_MAXPORT"
@@ -31,7 +31,6 @@ broker_port="$OPENEDGE_BROKER_PORT"
 rebuild_database="$OPENEDGE_REBUILD"
 db_from="$OPENEDGE_BASE"
 is_utf8_db="$OPENEDGE_UTF8"
-binary_options="build indexes"
 
 # should be a utf8 database?
 if [ "$is_utf8_db" = true ]
@@ -41,7 +40,7 @@ then
 fi
 
 # rebuild database?
-if [ ! -z ${rebuild_database} ]
+if [ ! -z ${rebuild_database} ] && [ -f ${openedge_db}.db ]
 then
   echo "$(date +%F_%T) Deleting existing database '${openedge_db}'"
   rm -f ${openedge_db}*.*
@@ -51,62 +50,70 @@ fi
 if [ ! -f ${openedge_db}.db ]
 then
   # make sure errors directory exists
-  mkdir -p /var/lib/openedge/data/init/errors/
+  mkdir -p /var/lib/openedge/data/init/${dbname}/errors/
   # clean it before run
-  rm -f /var/lib/openedge/data/init/errors/*\.e
+  rm -f /var/lib/openedge/data/init/${dbname}/errors/*\.e
 
   # touch ${procure_error_log}
   cd ${openedge_db%/*}
-  if [ ! -f /var/lib/openedge/data/init/${dbname}.st ]
+  if [ ! -f /var/lib/openedge/data/init/${dbname}/${dbname}.st ]
   then
     # create a new db from empty
     echo "$(date +%F_%T) Creating empty database '${openedge_db}' from /usr/dlc/${db_from}..." | tee -a ${procure_error_log}
     prodb ${openedge_db} /usr/dlc/${db_from}
   else
+    # copy the .st to db dir
+    cp /var/lib/openedge/data/init/${dbname}/${dbname}.st /var/lib/openedge/data/
     # create db structure file then copy from empty
     echo "$(date +%F_%T) Creating database structure for '${openedge_db}' from '${openedge_db}.st'..." | tee -a ${procure_error_log}
-    prostrct create ${openedge_db} /var/lib/openedge/data/init/${dbname}.st -blocksize 4096
+    prostrct create ${openedge_db} -blocksize 8192
     echo "$(date +%F_%T) Copying database into '${openedge_db}' from /usr/dlc/${db_from}..." | tee -a ${procure_error_log}
-    procopy /usr/dlc/${db_from} ${openedge_db} 
+    procopy /usr/dlc/${db_from} ${openedge_db}
   fi
   # back to working dir
   cd $WRKDIR
   touch ${openedge_db}.lg
 
   # add a SYSPROGRESS user
-  mpro -b -1 -db ${openedge_db} -p procure.p -param "ADD_USER,SYSPROGRESS,SYSPROGRESS,SYSPROGRESS" >> ${procure_error_log}
+  mpro -i -b -1 -db ${openedge_db} -p procure.p -param "ADD_USER,SYSPROGRESS,SYSPROGRESS,SYSPROGRESS" >> ${procure_error_log}
 
   # load any df's in the init folder
-  for df in /var/lib/openedge/data/init/*\.df; do
+  for df in /var/lib/openedge/data/init/${dbname}/*\.df; do
     echo "$(date +%F_%T) Loading df '${df}'..." | tee -a ${procure_error_log}
-    mpro -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SCHEMA,$df,NEW OBJECTS" >> ${procure_error_log}
+    mpro -i -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SCHEMA,$df,NEW OBJECTS" >> ${procure_error_log}
   done
 
   # load sequence values from init/_seqvald.d
-  if [ -f /var/lib/openedge/data/init/_seqvals.d ]
+  if [ -f /var/lib/openedge/data/init/${dbname}/_seqvals.d ]
   then
-    echo "$(date +%F_%T) Loading sequence current values from /var/lib/openedge/data/init/_seqvals.d..." | tee -a ${procure_error_log}
-    mpro -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SEQUENCE_VALUES,_seqvals.d,/var/lib/openedge/data/init" >> ${procure_error_log}
+    echo "$(date +%F_%T) Loading sequence current values from /var/lib/openedge/data/init/${dbname}/_seqvals.d..." | tee -a ${procure_error_log}
+    mpro -i -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_SEQUENCE_VALUES,_seqvals.d,/var/lib/openedge/data/init/${dbname}" >> ${procure_error_log}
   fi
 
   # load any binary dumps
-  for bd in /var/lib/openedge/data/init/*\.bd; do
+  for bd in /var/lib/openedge/data/init/${dbname}/*\.bd; do
+    idxbuild="true"
     echo "$(date +%F_%T) Loading binary dump file '${bd}'..." | tee -a ${procure_error_log}
-    proutil ${openedge_db} -C load ${bd} ${binary_options} | tee -a ${procure_error_log}
+    proutil -i ${openedge_db} -C load ${bd} ${binary_options} | tee -a ${procure_error_log}
   done
+  if [ ! -z ${idxbuild} ]
+  then
+    echo "$(date +%F_%T) Rebuilding all indexes..." | tee -a ${procure_error_log}
+    proutil -i ${openedge_db} -C idxbuild all -TB 64 -TM 32 -B 1000 -SG 64 ${binary_options} | tee -a ${procure_error_log}
+  fi
 
   # load any data in the init folder
-  for d in /var/lib/openedge/data/init/*\.d; do
-    echo "$(date +%F_%T) Loading data from /var/lib/openedge/data/init/*.d..." | tee -a ${procure_error_log}
-    mpro -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init" >> ${procure_error_log}
+  for d in /var/lib/openedge/data/init/${dbname}/*\.d; do
+    echo "$(date +%F_%T) Loading data from /var/lib/openedge/data/init/${dbname}/*.d..." | tee -a ${procure_error_log}
+    mpro -i -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init/${dbname}" >> ${procure_error_log}
     # all done in one go
     break
   done
 
   # move any error files into the errors directory
-  for error in /var/lib/openedge/data/init/*\.e; do
+  for error in /var/lib/openedge/data/init/${dbname}/*\.e; do
     echo "!Errors during loading in file '${error}'!"
-    mv -f ${error} /var/lib/openedge/data/init/errors/
+    mv -f ${error} /var/lib/openedge/data/init/${dbname}/errors/
   done
 
   echo "$(date +%F_%T) All loads completed."
@@ -148,7 +155,7 @@ while true
 do
   echo "$(date +%F_%T) Checking db status..."
   proutil ${openedge_db} -C holder || dbstatus=$? && true
-  if [ ${dbstatus} -eq 16 ]
+  if [ ${dbstatus-0} -eq 16 ]
   then
     break
   fi
@@ -159,7 +166,13 @@ pid=`ps aux|grep '[_]mpro'|awk '{print $2}'`
 echo "$(date +%F_%T) Server running as pid: ${pid}"
 
 # keep tailing log file until db server process exits
-tail --pid=${pid} -f "$openedge_db".lg & wait ${!}
+# load sequence values from init/_seqvald.d
+if [ -f "${openedge_db}" ]
+then
+  tail --pid=${pid} -f "${openedge_db}".lg & wait ${!}
+else
+  tail -f /dev/null & wait ${!}
+fi
 
 echo "$(date +%F_%T) Exiting with error!"
 

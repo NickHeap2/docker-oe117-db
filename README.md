@@ -32,6 +32,18 @@ docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v
 docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v S:/workspaces/docker-volumes/sports2000:/var/lib/openedge/data -e OPENEDGE_REBUILD=true -e OPENEDGE_BASE=sports2000 oe117-db:latest
 ```
 
+### Run the container with a mapped volume for data init and create db inside container
+
+```bash
+docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v D:/docker-volumes/powerleague/centrenet/init:/var/lib/openedge/data/init -e OPENEDGE_REBUILD=true -e OPENEDGE_DB=centrenet -e OPENEDGE_BASE=empty8 -e OPENEDGE_UTF8=true oe117-db:latest
+```
+
+### Run the container with a mapped volume for data init with utf8
+
+```bash
+docker run -it --rm --name oe117-db -p 20666:20666 -p 20670-20700:20670-20700 -v D:/docker-volumes/powerleague/centrenet:/var/lib/openedge/data -e OPENEDGE_DB=enabl -e OPENEDGE_UTF8=true oe117-db:latest
+```
+
 ### Run bash in the container
 
 ```bash
