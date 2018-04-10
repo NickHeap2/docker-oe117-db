@@ -14,7 +14,7 @@ signal_handler() {
     exit 0
 }
 # trap SIGTERM and call the handler to cleanup processes
-trap 'kill ${!}; signal_handler' SIGTERM SIGINT
+trap 'signal_handler' SIGTERM SIGINT
 
 # set vars
 dbname="$OPENEDGE_DB"

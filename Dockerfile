@@ -33,7 +33,7 @@ COPY base/procure.r /var/lib/openedge/base/
 # add startup script
 WORKDIR /usr/wrk
 
-COPY scripts/start.sh .
+COPY scripts/start.sh /usr/wrk
 
 # set required vars
 ENV \
