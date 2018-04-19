@@ -33,7 +33,7 @@ COPY base/procure.r /var/lib/openedge/base/
 # add startup script
 WORKDIR /usr/wrk
 
-COPY scripts/start.sh /usr/wrk
+COPY scripts/ /usr/wrk/
 
 # set required vars
 ENV \
@@ -59,6 +59,9 @@ ENV \
 VOLUME /var/lib/openedge/data/
 # volume for code such as triggers
 VOLUME /var/lib/openedge/code/
+
+HEALTHCHECK --interval=30s --timeout=5s \
+  CMD ["healthcheck.sh"]
 
 EXPOSE $OPENEDGE_BROKER_PORT $OPENEDGE_MINPORT-$OPENEDGE_MAXPORT
 
