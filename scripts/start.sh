@@ -120,20 +120,20 @@ then
 else
   echo "$(date +%F_%T) Using existing database '${openedge_db}'."
 
-  # repair in case it isn't created by us
-  echo 'repairing db structure... '
-  (cd /var/lib/openedge/data/; prostrct repair ${openedge_db})
-
   # do we need to clean up from a crash? (should do extra checks here) 
   if [ -f ${openedge_db}.lk ]
   then
     echo "$(date +%F_%T) Removing lock file from possible crash..."
-    rm ${openedge_db}.lk
+    rm -f ${openedge_db}.lk
   fi
 
-  # truncate the logfile
+  # repair in case it isn't created by us (ignore error here)
+  echo "$(date +%F_%T) Repairing db structure..."
+  (cd /var/lib/openedge/data/; prostrct repair ${openedge_db}) || true
+
+  # truncate the logfile (ignore error here)
   echo "$(date +%F_%T) Truncating log file"
-  prolog ${openedge_db} -silent
+  prolog ${openedge_db} -silent || true
 fi
 
 # set the server args
@@ -151,23 +151,51 @@ then
 fi
 
 # wait for db to be serving 
+# while true
+# do
+#   echo "$(date +%F_%T) Checking db status..."
+#   proutil ${openedge_db} -C holder || dbstatus=$? && true
+#   if [ ${dbstatus-0} -eq 16 ]
+#   then
+#     break
+#   fi
+#   sleep 1
+# done
+
+# get db server pid 
+echo "$(date +%F_%T) Waiting for database to start..."
+
+RETRIES=0
 while true
 do
-  echo "$(date +%F_%T) Checking db status..."
-  proutil ${openedge_db} -C holder || dbstatus=$? && true
-  if [ ${dbstatus-0} -eq 16 ]
+  if [ "${RETRIES}" -gt 10 ]
   then
     break
   fi
+
+  pid=`ps aux|grep '[_]mprosrv'|awk '{print $2}'`
+  if [ ! -z "${pid}" ]
+  then
+    case "${pid}" in
+      ''|*[!0-9]*) continue ;;
+      *) break ;;
+    esac
+  fi
   sleep 1
+  RETRIES=$((RETRIES+1))
 done
-# get db server pid 
-pid=`ps aux|grep '[_]mpro'|awk '{print $2}'`
+# did we get the pid?
+if [ -z "${pid}" ]
+then
+  echo "$(date +%F_%T) ERROR: Database process not found exiting."
+  exit 1
+fi
+
 echo "$(date +%F_%T) Server running as pid: ${pid}"
 
 # keep tailing log file until db server process exits
 # load sequence values from init/_seqvald.d
-if [ -f "${openedge_db}" ]
+if [ -f "${openedge_db}".lg ]
 then
   tail --pid=${pid} -f "${openedge_db}".lg & wait ${!}
 else
