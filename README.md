@@ -67,3 +67,8 @@ docker stop oe117-db
 ```bash
 docker rm oe117-db
 ```
+
+- - -
+
+Please note that this project is released with a [Contributor Code of Conduct](code-of-conduct.md). By participating in this project you agree to abide by its terms.
+
