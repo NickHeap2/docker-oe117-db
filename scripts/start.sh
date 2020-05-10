@@ -74,8 +74,14 @@ then
   cd $WRKDIR
   touch ${openedge_db}.lg
 
-  # add a SYSPROGRESS user
-  mpro -i -b -1 -db ${openedge_db} -p procure.p -param "ADD_USER,SYSPROGRESS,SYSPROGRESS,SYSPROGRESS" >> ${procure_error_log}
+  # add users from .user files
+  for user in /var/lib/openedge/data/init/${dbname}/*\.user; do
+    # read values from file
+    add_username=`sed '1q;d' ${user}`
+    add_password=`sed '2q;d' ${user}`
+    echo "$(date +%F_%T) Adding user ${add_username}..."
+    mpro -i -b -1 -db ${openedge_db} -p procure.p -param "ADD_USER,${add_username},${add_username},${add_password}" >> ${procure_error_log}
+  done
 
   # load any df's in the init folder
   for df in /var/lib/openedge/data/init/${dbname}/*\.df; do
