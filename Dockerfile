@@ -28,7 +28,7 @@ COPY --from=db_install /usr/dlc/ /usr/dlc/
 
 # the directory for the database data
 RUN mkdir -p /var/lib/openedge/data/ && mkdir -p /var/lib/openedge/base/ && mkdir -p /var/lib/openedge/code/
-COPY base/procure.r /var/lib/openedge/base/
+COPY base/* /var/lib/openedge/base/
 
 # add startup script
 WORKDIR /usr/wrk
@@ -61,7 +61,7 @@ VOLUME /var/lib/openedge/data/
 VOLUME /var/lib/openedge/code/
 
 HEALTHCHECK --interval=30s --timeout=5s \
-  CMD ["healthcheck.sh"]
+  CMD ["/usr/wrk/healthcheck.sh"]
 
 EXPOSE $OPENEDGE_BROKER_PORT $OPENEDGE_MINPORT-$OPENEDGE_MAXPORT
 

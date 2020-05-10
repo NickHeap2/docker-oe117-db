@@ -105,7 +105,7 @@ then
   # load any data in the init folder
   for d in /var/lib/openedge/data/init/${dbname}/*\.d; do
     echo "$(date +%F_%T) Loading data from /var/lib/openedge/data/init/${dbname}/*.d..." | tee -a ${procure_error_log}
-    mpro -i -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init/${dbname}" >> ${procure_error_log}
+    mpro -i -rx -b -1 -db ${openedge_db} -p procure.p -param "LOAD_DATA,ALL,/var/lib/openedge/data/init/${dbname}" >> ${procure_error_log}
     # all done in one go
     break
   done
@@ -151,16 +151,23 @@ then
 fi
 
 # wait for db to be serving 
-# while true
-# do
-#   echo "$(date +%F_%T) Checking db status..."
-#   proutil ${openedge_db} -C holder || dbstatus=$? && true
-#   if [ ${dbstatus-0} -eq 16 ]
-#   then
-#     break
-#   fi
-#   sleep 1
-# done
+RETRIES=0
+while true
+do
+  if [ "${RETRIES}" -gt 10 ]
+  then
+    break
+  fi
+
+  echo "$(date +%F_%T) Checking db status..."
+  proutil ${openedge_db} -C holder || dbstatus=$? && true
+  if [ ${dbstatus-0} -eq 16 ]
+  then
+    break
+  fi
+  sleep 1
+  RETRIES=$((RETRIES+1))
+done
 
 # get db server pid 
 echo "$(date +%F_%T) Waiting for database to start..."
@@ -194,7 +201,6 @@ fi
 echo "$(date +%F_%T) Server running as pid: ${pid}"
 
 # keep tailing log file until db server process exits
-# load sequence values from init/_seqvald.d
 if [ -f "${openedge_db}".lg ]
 then
   tail --pid=${pid} -f "${openedge_db}".lg & wait ${!}

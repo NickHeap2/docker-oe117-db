@@ -7,6 +7,7 @@ then
   exit 0
 fi
 if [ $? -eq 0 ]
+then
   exit 1
 fi
 exit $?
